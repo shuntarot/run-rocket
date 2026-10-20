@@ -1,0 +1,27 @@
+[dut]
+module = "rocket_top"
+
+[clock.i_clk]
+freq_mhz = 50
+
+# Core memory (0x8000_0000) on the board's DRAM. `dut_base` lets hio load an
+# ELF by the core's addresses.
+[bundle.mem]
+backing  = "dram"
+aperture = "32M"
+dut_base = 0x8000_0000
+ports    = ["mem"]
+
+# MMIO (0x0002_0000) on a 1KB FPGA memory
+[bundle.mmio]
+backing  = "bram"
+depth    = 128
+dut_base = 0x2_0000
+ports    = ["mmio"]
+
+# The debug module's DMI. `hio cpu` finds it here. Its reset is the
+# harness's own, so `hio reset` leaves the debugger's state alone.
+[bundle.dmi]
+backing = "dmi"
+reset   = "i_dm_rst"
+

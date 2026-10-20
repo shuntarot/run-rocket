@@ -1,0 +1,182 @@
+// Core RTL, generated from rocket-chip v1.6 (see the comment below)
+include (inline, "MiniRocket.v");
+
+/// A rocket-chip RV64 core (`MiniRocket`) wrapped for the FPGA harness.
+///
+/// The core itself is a black box (`$sv::MiniRocket`, `MiniRocket.v` next to
+/// this file). It is rocket-chip v1.6 built with a small Chisel generator: one
+/// RV64IMAC Rocket core (no VM, FPU or BTB), a 4KB ICache, a 4KB DTIM instead
+/// of a DCache, no interrupts, and a debug module on APB. `include(inline, ..)`
+/// puts it in this module's output, so it reaches synthesis through the
+/// filelist. This wrapper only adapts its ports:
+///
+///   - `mem` : AXI4 master to DRAM, 64-bit data, the core's own addresses
+///             (0x8000_0000 up).
+///   - `mmio`: AXI4 master to MMIO, 64-bit data, the core's own addresses
+///             (0x0002_0000 - 0x0002_FFFF).
+///   - `i_dmi_*`: the debug module's DMI as an APB slave. DMI register n is at
+///             byte address n * 4.
+///
+/// The core boots from DRAM. The debug module runs on its own reset
+/// (`i_dm_rst`), which the DUT reset does not touch, so a halted hart and a
+/// halt-on-reset request survive `hio reset`. `ndreset` from the debug module
+/// resets the core.
+module rocket_top (
+    i_clk   : input clock,
+    i_rst   : input reset,
+    i_dm_rst: input reset,
+
+    i_dmi_psel   : input  logic    ,
+    i_dmi_penable: input  logic    ,
+    i_dmi_pwrite : input  logic    ,
+    i_dmi_paddr  : input  logic<12>,
+    i_dmi_pwdata : input  logic<32>,
+    o_dmi_prdata : output logic<32>,
+    o_dmi_pready : output logic    ,
+
+    mem : modport $std::axi4_if::<$std::axi4_pkg::<32, 8, 6, 1, 1, 1, 1, 1>>::master,
+    mmio: modport $std::axi4_if::<$std::axi4_pkg::<18, 8, 4, 1, 1, 1, 1, 1>>::master,
+) {
+    // Active-high synchronous resets for the core and the debug module
+    var sys_rst  : logic;
+    var dm_rst   : logic;
+    var ndreset  : logic;
+    var ndreset_q: logic;
+    var core_rst : logic;
+    var dmactive : logic;
+
+    always_ff (i_clk, i_rst) {
+        if_reset {
+            sys_rst   = 1;
+            ndreset_q = 0;
+        } else {
+            sys_rst   = 0;
+            ndreset_q = ndreset;
+        }
+    }
+
+    always_ff (i_clk, i_dm_rst) {
+        if_reset {
+            dm_rst = 1;
+        } else {
+            dm_rst = 0;
+        }
+    }
+
+    assign core_rst = sys_rst | ndreset_q;
+
+    // Signals of the AXI4 ports that the core does not have
+    always_comb {
+        mem.awregion  = 0;
+        mem.awuser    = 0;
+        mem.wuser     = 0;
+        mem.arregion  = 0;
+        mem.aruser    = 0;
+        mmio.awregion = 0;
+        mmio.awuser   = 0;
+        mmio.wuser    = 0;
+        mmio.arregion = 0;
+        mmio.aruser   = 0;
+    }
+
+    inst u_core: $sv::MiniRocket (
+        r#clock: i_clk   ,
+        r#reset: core_rst,
+
+        mem_axi4_0_aw_ready     : mem.awready,
+        mem_axi4_0_aw_valid     : mem.awvalid,
+        mem_axi4_0_aw_bits_id   : mem.awid   ,
+        mem_axi4_0_aw_bits_addr : mem.awaddr ,
+        mem_axi4_0_aw_bits_len  : mem.awlen  ,
+        mem_axi4_0_aw_bits_size : mem.awsize ,
+        mem_axi4_0_aw_bits_burst: mem.awburst,
+        mem_axi4_0_aw_bits_lock : mem.awlock ,
+        mem_axi4_0_aw_bits_cache: mem.awcache,
+        mem_axi4_0_aw_bits_prot : mem.awprot ,
+        mem_axi4_0_aw_bits_qos  : mem.awqos  ,
+        mem_axi4_0_w_ready      : mem.wready ,
+        mem_axi4_0_w_valid      : mem.wvalid ,
+        mem_axi4_0_w_bits_data  : mem.wdata  ,
+        mem_axi4_0_w_bits_strb  : mem.wstrb  ,
+        mem_axi4_0_w_bits_last  : mem.wlast  ,
+        mem_axi4_0_b_ready      : mem.bready ,
+        mem_axi4_0_b_valid      : mem.bvalid ,
+        mem_axi4_0_b_bits_id    : mem.bid    ,
+        mem_axi4_0_b_bits_resp  : mem.bresp  ,
+        mem_axi4_0_ar_ready     : mem.arready,
+        mem_axi4_0_ar_valid     : mem.arvalid,
+        mem_axi4_0_ar_bits_id   : mem.arid   ,
+        mem_axi4_0_ar_bits_addr : mem.araddr ,
+        mem_axi4_0_ar_bits_len  : mem.arlen  ,
+        mem_axi4_0_ar_bits_size : mem.arsize ,
+        mem_axi4_0_ar_bits_burst: mem.arburst,
+        mem_axi4_0_ar_bits_lock : mem.arlock ,
+        mem_axi4_0_ar_bits_cache: mem.arcache,
+        mem_axi4_0_ar_bits_prot : mem.arprot ,
+        mem_axi4_0_ar_bits_qos  : mem.arqos  ,
+        mem_axi4_0_r_ready      : mem.rready ,
+        mem_axi4_0_r_valid      : mem.rvalid ,
+        mem_axi4_0_r_bits_id    : mem.rid    ,
+        mem_axi4_0_r_bits_data  : mem.rdata  ,
+        mem_axi4_0_r_bits_resp  : mem.rresp  ,
+        mem_axi4_0_r_bits_last  : mem.rlast  ,
+
+        mmio_axi4_0_aw_ready     : mmio.awready,
+        mmio_axi4_0_aw_valid     : mmio.awvalid,
+        mmio_axi4_0_aw_bits_id   : mmio.awid   ,
+        mmio_axi4_0_aw_bits_addr : mmio.awaddr ,
+        mmio_axi4_0_aw_bits_len  : mmio.awlen  ,
+        mmio_axi4_0_aw_bits_size : mmio.awsize ,
+        mmio_axi4_0_aw_bits_burst: mmio.awburst,
+        mmio_axi4_0_aw_bits_lock : mmio.awlock ,
+        mmio_axi4_0_aw_bits_cache: mmio.awcache,
+        mmio_axi4_0_aw_bits_prot : mmio.awprot ,
+        mmio_axi4_0_aw_bits_qos  : mmio.awqos  ,
+        mmio_axi4_0_w_ready      : mmio.wready ,
+        mmio_axi4_0_w_valid      : mmio.wvalid ,
+        mmio_axi4_0_w_bits_data  : mmio.wdata  ,
+        mmio_axi4_0_w_bits_strb  : mmio.wstrb  ,
+        mmio_axi4_0_w_bits_last  : mmio.wlast  ,
+        mmio_axi4_0_b_ready      : mmio.bready ,
+        mmio_axi4_0_b_valid      : mmio.bvalid ,
+        mmio_axi4_0_b_bits_id    : mmio.bid    ,
+        mmio_axi4_0_b_bits_resp  : mmio.bresp  ,
+        mmio_axi4_0_ar_ready     : mmio.arready,
+        mmio_axi4_0_ar_valid     : mmio.arvalid,
+        mmio_axi4_0_ar_bits_id   : mmio.arid   ,
+        mmio_axi4_0_ar_bits_addr : mmio.araddr ,
+        mmio_axi4_0_ar_bits_len  : mmio.arlen  ,
+        mmio_axi4_0_ar_bits_size : mmio.arsize ,
+        mmio_axi4_0_ar_bits_burst: mmio.arburst,
+        mmio_axi4_0_ar_bits_lock : mmio.arlock ,
+        mmio_axi4_0_ar_bits_cache: mmio.arcache,
+        mmio_axi4_0_ar_bits_prot : mmio.arprot ,
+        mmio_axi4_0_ar_bits_qos  : mmio.arqos  ,
+        mmio_axi4_0_r_ready      : mmio.rready ,
+        mmio_axi4_0_r_valid      : mmio.rvalid ,
+        mmio_axi4_0_r_bits_id    : mmio.rid    ,
+        mmio_axi4_0_r_bits_data  : mmio.rdata  ,
+        mmio_axi4_0_r_bits_resp  : mmio.rresp  ,
+        mmio_axi4_0_r_bits_last  : mmio.rlast  ,
+
+        resetctrl_hartIsInReset_0: core_rst,
+
+        debug_clock      : i_clk        ,
+        debug_reset      : dm_rst       ,
+        debug_apb_clock  : i_clk        ,
+        debug_apb_reset  : dm_rst       ,
+        debug_apb_psel   : i_dmi_psel   ,
+        debug_apb_penable: i_dmi_penable,
+        debug_apb_pwrite : i_dmi_pwrite ,
+        debug_apb_paddr  : i_dmi_paddr  ,
+        debug_apb_pwdata : i_dmi_pwdata ,
+        debug_apb_prdata : o_dmi_prdata ,
+        debug_apb_pready : o_dmi_pready ,
+        debug_ndreset    : ndreset      ,
+        debug_dmactive   : dmactive     ,
+        debug_dmactiveAck: dmactive     ,
+
+        meip_0   : 1'b0,
+        boot_mode: 1'b0,
+    );
+}

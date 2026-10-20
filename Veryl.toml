@@ -1,0 +1,10 @@
+[project]
+name    = "run_rocket"
+version = "0.1.0"
+
+[build]
+sources    = ["rtl"]
+reset_type = "async_low"
+
+[dependencies]
+hns = { git = "https://github.com/shuntarot/uharness", project = "hns", version = "0.6.1" }
