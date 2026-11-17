@@ -1,0 +1,79 @@
+/* LinuxRocket in the harness: one hart, the CLINT, and memory. No UART and
+ * no PLIC: the console is the SBI one, which the firmware puts on RTT.
+ * The same as run-heliodor's heliodor.dts but for the clock.
+ *
+ * Memory starts at the kernel (0x8020_0000); below it is the firmware. It
+ * ends at 0xFFFF_FFFF, less the 32 MB the core does not cache. */
+/dts-v1/;
+
+/ {
+	#address-cells = <2>;
+	#size-cells = <2>;
+	compatible = "rocket,rv64";
+	model = "LinuxRocket on veryl-harness";
+
+	chosen {
+		/* no4lvl: the core has Sv39 only. Rocket ignores a satp mode it
+		 * does not have, so Linux would find that alone; the same bootargs
+		 * as heliodor keep the kernels' runs alike. */
+		bootargs = "console=hvc0 earlycon=sbi no4lvl";
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		/* mtime counts at a tenth of the 50 MHz core clock. */
+		timebase-frequency = <5000000>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "riscv";
+			reg = <0>;
+			riscv,isa = "rv64imafdc";
+			/* Linux reads these; it reads riscv,isa only with
+			 * RISCV_ISA_FALLBACK, which tinyconfig leaves out. */
+			riscv,isa-base = "rv64i";
+			riscv,isa-extensions = "i", "m", "a", "f", "d", "c",
+				"zicsr", "zifencei", "zicntr";
+			mmu-type = "riscv,sv39";
+			status = "okay";
+
+			cpu0_intc: interrupt-controller {
+				#interrupt-cells = <1>;
+				compatible = "riscv,cpu-intc";
+				interrupt-controller;
+			};
+		};
+	};
+
+	/* All of DRAM from the kernel up: 2 GB less the firmware below it. */
+	memory@80200000 {
+		device_type = "memory";
+		reg = <0x0 0x80200000 0x0 0x7fe00000>;
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		/* DRAM the core does not cache: the RTT console and tohost. */
+		uncached@82000000 {
+			reg = <0x0 0x82000000 0x0 0x2000000>;
+			no-map;
+		};
+	};
+
+	soc {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "simple-bus";
+		ranges;
+
+		clint@2000000 {
+			compatible = "riscv,clint0";
+			reg = <0x0 0x2000000 0x0 0x10000>;
+			interrupts-extended = <&cpu0_intc 3>, <&cpu0_intc 7>;
+		};
+	};
+};

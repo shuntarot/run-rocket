@@ -1,12 +1,14 @@
 // An AXI4 memory for the testbench, 64-bit data. It takes one read and one
 // write at a time, as the harness does, and delays every ready and every
 // response by a pseudo-random number of cycles. Each transfer is logged, and
-// one the harness does not expect is marked (see `odd`).
+// one the harness does not expect is marked (see `odd`); with LOG 0, only
+// those are logged.
 module axi_mem #(
     parameter string NAME = "mem",
     parameter int    AW   = 32,
     parameter int    IW   = 6,
-    parameter int    SEED = 16'hace1
+    parameter int    SEED = 16'hace1,
+    parameter bit    LOG  = 1
 ) (
     input  logic          clk,
     input  logic          rst_n,
@@ -86,7 +88,7 @@ module axi_mem #(
                 w_busy <= 1; w_have <= 1;
                 w_addr <= awaddr; w_left <= awlen; w_size <= awsize; w_id <= awid;
                 writes <= writes + 1;
-                $display("%0d %s AW id=%0d addr=%h len=%0d size=%0d burst=%0d%s", cycle, NAME, awid, awaddr,
+                if (LOG || o != "") $display("%0d %s AW id=%0d addr=%h len=%0d size=%0d burst=%0d%s", cycle, NAME, awid, awaddr,
                          awlen, awsize, awburst, o);
                 if (o != "") odds <= odds + 1;
                 last_move <= cycle;
@@ -110,7 +112,7 @@ module axi_mem #(
                 r_busy <= 1; r_addr <= araddr; r_left <= arlen; r_size <= arsize; r_id <= arid;
                 r_wait <= lfsr[10:7];
                 reads <= reads + 1;
-                $display("%0d %s AR id=%0d addr=%h len=%0d size=%0d burst=%0d%s", cycle, NAME, arid, araddr,
+                if (LOG || o != "") $display("%0d %s AR id=%0d addr=%h len=%0d size=%0d burst=%0d%s", cycle, NAME, arid, araddr,
                          arlen, arsize, arburst, o);
                 if (o != "") odds <= odds + 1;
                 last_move <= cycle;

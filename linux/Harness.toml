@@ -1,0 +1,21 @@
+[dut]
+module = "linux_top"
+
+# mtime counts at a tenth of this; rocket.dts says the same.
+[clock.i_clk]
+freq_mhz = 50
+
+# All of memory, from 0x8000_0000. `hio cpu boot` places each segment by
+# `dut_base`. 2 GB, as the core's memory port and the device tree say.
+[bundle.mem]
+backing  = "dram"
+depth    = "256M"   # words of 8 bytes
+aperture = "1M"
+dut_base = 0x8000_0000
+ports    = ["mem"]
+
+# The debug module's DMI. `hio cpu` finds it here. Its reset is the
+# harness's own, so `hio reset` leaves the debugger's state alone.
+[bundle.dmi]
+backing = "dmi"
+reset   = "i_dm_rst"
