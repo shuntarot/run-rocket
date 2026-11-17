@@ -19,3 +19,7 @@ ports    = ["mem"]
 [bundle.dmi]
 backing = "dmi"
 reset   = "i_dm_rst"
+
+# For `--transport pcie`: the BAR must hold the whole window.
+[pcie]
+bar_bytes = "2M"

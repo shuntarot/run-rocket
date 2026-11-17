@@ -89,7 +89,20 @@ make -C linux                       # linux/linux.elf
 make -C linux/sim                   # boots it in Verilator
 ```
 
-The testbench is the host of the RTT console: it prints the console, types
+On the VCU118 (50 MHz, PCIe; a build takes about 40 minutes):
+
+```bash
+cd linux
+veryl harness gen --target xilinx/vcu118 --transport pcie -o hns/vcu118
+make -C hns/vcu118/syn
+hio --regs hns/vcu118/regs.json program
+hio --regs hns/vcu118/regs.json cpu boot linux.elf
+```
+
+The shell comes up about 6 s after `hio cpu boot`; `exit` powers off and
+ends it.
+
+In Verilator, the testbench is the host of the RTT console: it prints the console, types
 `KEYS` at the first shell prompt (by default `cat /proc/cpuinfo; exit`) and
 stops at the exit status, or at a kernel panic. With 2 GB of memory the shell
 comes up at about 295M cycles, half an hour of Verilator at about 170K
@@ -107,6 +120,7 @@ in its PS and is not counted).
 | `digilent/arty-a7-35` | 50 MHz | 9,890 / 4,416 / 5.5 / 0 | 16,838 / 10,332 / 6.5 / 0 |
 | `digilent/pynq-z1` | 50 MHz | 9,856 / 4,414 / 5.5 / 0 | 11,024 / 5,614 / 6.5 / 0 |
 | `xilinx/vcu118` | 50 MHz | 9,898 / 4,419 / 5 / 0 | 29,546 / 26,867 / 31.5 / 3 |
+| `xilinx/vcu118`, LinuxRocket, PCIe | 50 MHz | 30,121 / 15,507 / 8 / 15 | 62,424 / 53,017 / 55.5 / 18 |
 
 ## Files
 
