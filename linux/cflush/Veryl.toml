@@ -1,0 +1,21 @@
+# LinuxRocket with a blocking data cache and cflush.d.l1, for checkpoint and
+# restore tests (rocket-src's LinuxRocketCFlushConfig). Only the core,
+# rtl/LinuxRocket.v, differs from linux/: Harness.toml links to linux/'s, and
+# `make` copies linux/'s wrapper into rtl/ (run it before `veryl build`).
+# Measure performance on linux/, not here: the blocking cache waits on every
+# miss.
+[project]
+name    = "run_rocket_linux_cflush"
+version = "0.1.0"
+
+[build]
+sources    = ["rtl"]
+reset_type = "async_low"
+
+[dependencies]
+hns = { git = "https://github.com/shuntarot/uharness", project = "hns", version = "0.13.1" }
+
+[lint.portability]
+# hns::mem writes its array from both ports, the form Vivado infers a
+# true dual port BRAM from. Veryl asks the user of hns to accept that.
+allow_in_dependencies = ["multiple_assign"]

@@ -108,6 +108,28 @@ stops at the exit status, or at a kernel panic. With 2 GB of memory the shell
 comes up at about 295M cycles, half an hour of Verilator at about 170K
 cycles a second.
 
+### A core for checkpoint tests
+
+`linux/cflush/` is the same project around another core: LinuxRocket with a
+blocking data cache and `cflush.d.l1` (rocket-src's
+`LinuxRocketCFlushConfig`). `cflush.d.l1 x0` (`0xfc000073`) writes the whole
+data cache back to memory and invalidates it, also from the Debug Module's
+program buffer, so a debugger can save and restore the state through memory.
+`LinuxRocket`'s non-blocking data cache cannot do that, but it is faster:
+measure performance on `linux/`, not here.
+
+```bash
+make -C linux/sim cflush            # cflush from the program buffer, in Verilator
+cd linux/cflush
+make                                # copies the wrapper from ../rtl
+veryl harness gen --target xilinx/vcu118 --transport pcie -o hns/vcu118
+make -C hns/vcu118/syn
+```
+
+The test halts the core with a store still in the data cache, then runs a
+`nop` and `cflush.d.l1 x0` from the program buffer: memory changes after the
+second only.
+
 ## Size
 
 LUT and FF counts, block RAM in 36 Kb blocks, after place and route. The
@@ -134,6 +156,7 @@ in its PS and is not counted).
 | `apps/` | the firmware: `hello`, `console` |
 | `sim/` | the DUT alone in Verilator (`make -C sim ELF=<elf>`) |
 | `linux/` | `LinuxRocket` and Linux (above): `rtl/linux_top.veryl`, `rtl/LinuxRocket.v`, `rocket.dts`, `sim/` |
+| `linux/cflush/` | the same with a blocking data cache and `cflush.d.l1` (above): `rtl/LinuxRocket.v` |
 
 Put paths for your machine in `local.mk` (`CROSS`, `VERILATOR`, and for
 Linux `LINUX_CROSS` and `HELIODOR`).
