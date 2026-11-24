@@ -7,7 +7,7 @@ sources    = ["rtl"]
 reset_type = "async_low"
 
 [dependencies]
-hns = { git = "https://github.com/shuntarot/uharness", project = "hns", version = "0.13.1" }
+hns = { git = "https://github.com/shuntarot/uharness", project = "hns", version = "0.15.0" }
 
 [lint.portability]
 # hns::mem writes its array from both ports, the form Vivado infers a
