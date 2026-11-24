@@ -102,6 +102,16 @@ hio --regs hns/vcu118/regs.json cpu boot linux.elf
 The shell comes up about 6 s after `hio cpu boot`; `exit` powers off and
 ends it.
 
+The memory port has the harness's latency model (`model = true` in
+`linux/Harness.toml`), to run the core against a slower memory, such as an
+ASIC's DRAM at its own clock. With nothing set it adds one cycle; this holds
+every read and write for 160 cycles at the core's AXI port:
+
+```bash
+hio --regs hns/vcu118/regs.json write mem_rd_latency 160
+hio --regs hns/vcu118/regs.json write mem_wr_latency 160
+```
+
 In Verilator, the testbench is the host of the RTT console: it prints the console, types
 `KEYS` at the first shell prompt (by default `cat /proc/cpuinfo; exit`) and
 stops at the exit status, or at a kernel panic. With 2 GB of memory the shell
@@ -124,11 +134,21 @@ cd linux/cflush
 make                                # copies the wrapper from ../rtl
 veryl harness gen --target xilinx/vcu118 --transport pcie -o hns/vcu118
 make -C hns/vcu118/syn
+hio --regs hns/vcu118/regs.json program
+hio --regs hns/vcu118/regs.json cpu boot ../linux.elf   # Ctrl-A x leaves the console
+hio --regs hns/vcu118/regs.json cpu save ck             # halts the core, saves to ck/
+hio --regs hns/vcu118/regs.json cpu restore ck --resume
+hio --regs hns/vcu118/regs.json cpu console ../linux.elf
 ```
 
 The test halts the core with a store still in the data cache, then runs a
 `nop` and `cflush.d.l1 x0` from the program buffer: memory changes after the
 second only.
+
+`linux/cflush/Harness.toml` is `linux/`'s with a checkpoint table: `hio cpu
+save` and `restore` run `cflush.d.l1 x0` to write the data cache back first,
+and keep `mtimecmp`. Without it the saved memory misses what is still in the
+cache.
 
 ## Size
 
@@ -142,7 +162,7 @@ in its PS and is not counted).
 | `digilent/arty-a7-35` | 50 MHz | 9,890 / 4,416 / 5.5 / 0 | 16,838 / 10,332 / 6.5 / 0 |
 | `digilent/pynq-z1` | 50 MHz | 9,856 / 4,414 / 5.5 / 0 | 11,024 / 5,614 / 6.5 / 0 |
 | `xilinx/vcu118` | 50 MHz | 9,898 / 4,419 / 5 / 0 | 29,546 / 26,867 / 31.5 / 3 |
-| `xilinx/vcu118`, LinuxRocket, PCIe | 50 MHz | 30,121 / 15,507 / 8 / 15 | 62,424 / 53,017 / 55.5 / 18 |
+| `xilinx/vcu118`, LinuxRocket, PCIe, without the latency model | 50 MHz | 30,121 / 15,507 / 8 / 15 | 62,424 / 53,017 / 55.5 / 18 |
 
 ## Files
 

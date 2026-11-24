@@ -1,1 +1,40 @@
-../Harness.toml
+# linux/'s Harness.toml, and what `hio cpu save` and `restore` need to know
+# about this core. The checkpoint table goes to regs.json only: it changes
+# neither the RTL nor the map hash.
+
+[dut]
+module = "linux_top"
+
+# mtime counts at a tenth of this; rocket.dts says the same.
+[clock.i_clk]
+freq_mhz = 50
+
+# All of memory, from 0x8000_0000. `hio cpu boot` places each segment by
+# `dut_base`. 2 GB, as the core's memory port and the device tree say.
+[bundle.mem]
+backing  = "dram"
+depth    = "256M"   # words of 8 bytes
+aperture = "1M"
+dut_base = 0x8000_0000
+ports    = ["mem"]
+# A fixed DRAM latency, set at run time (mem_rd_latency, mem_wr_latency).
+model    = true
+
+# The debug module's DMI. `hio cpu` finds it here. Its reset is the
+# harness's own, so `hio reset` leaves the debugger's state alone.
+[bundle.dmi]
+backing = "dmi"
+reset   = "i_dm_rst"
+
+# For `--transport pcie`: the BAR must hold the whole window.
+[pcie]
+bar_bytes = "2M"
+
+# What `hio cpu save` and `restore` need besides the Debug Module.
+[bundle.dmi.checkpoint]
+flush = [0xfc000073]  # cflush.d.l1 x0: write the whole L1 D back, invalidate
+
+[[bundle.dmi.checkpoint.mmio]]
+name  = "mtimecmp"
+addr  = 0x0200_4000
+width = 64

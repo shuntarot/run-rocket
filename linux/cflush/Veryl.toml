@@ -1,7 +1,8 @@
 # LinuxRocket with a blocking data cache and cflush.d.l1, for checkpoint and
 # restore tests (rocket-src's LinuxRocketCFlushConfig). Only the core,
-# rtl/LinuxRocket.v, differs from linux/: Harness.toml links to linux/'s, and
-# `make` copies linux/'s wrapper into rtl/ (run it before `veryl build`).
+# rtl/LinuxRocket.v, differs from linux/: Harness.toml is linux/'s with a
+# checkpoint table, and `make` copies linux/'s wrapper into rtl/ (run it
+# before `veryl build`).
 # Measure performance on linux/, not here: the blocking cache waits on every
 # miss.
 [project]
