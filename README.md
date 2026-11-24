@@ -162,7 +162,7 @@ in its PS and is not counted).
 | `digilent/arty-a7-35` | 50 MHz | 9,890 / 4,416 / 5.5 / 0 | 16,838 / 10,332 / 6.5 / 0 |
 | `digilent/pynq-z1` | 50 MHz | 9,856 / 4,414 / 5.5 / 0 | 11,024 / 5,614 / 6.5 / 0 |
 | `xilinx/vcu118` | 50 MHz | 9,898 / 4,419 / 5 / 0 | 29,546 / 26,867 / 31.5 / 3 |
-| `xilinx/vcu118`, LinuxRocket, PCIe, without the latency model | 50 MHz | 30,121 / 15,507 / 8 / 15 | 62,424 / 53,017 / 55.5 / 18 |
+| `xilinx/vcu118`, LinuxRocket, PCIe, with the latency model | 50 MHz | 30,084 / 15,507 / 8 / 15 | 66,440 / 55,904 / 55.5 / 18 |
 
 ## Files
 
